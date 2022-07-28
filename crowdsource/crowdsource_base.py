@@ -256,6 +256,8 @@ def fit_once(im, x, y, psfs, weight=None,
         nskyx (int): number of sky pixels in x direction (0 or >= 3)
         nskyy (int): number of sky pixels in y direction (0 or >= 3)
 
+        WTF is guess?
+
     Returns:
         tuple(flux, model, sky)
         flux: output of optimization routine; needs to be refined
@@ -654,8 +656,8 @@ def fit_im_force(im, x, y, psf, weight=None, dq=None, psfderiv=True,
                                       weight, derivcentroids=derivcentroids)
         xcen, ycen, stamps = centroids
         if refit_psf:
-            psf, x, y = refit_psf_from_stamps(psf, x, y, xcen, ycen,
-                                              stamps)
+            psf, _x, _y = refit_psf_from_stamps(psf, x, y, xcen, ycen,
+                                                stamps)
             # we are letting the positions get updated, even when
             # psfderiv is false, only for the mean shift that
             # gets introduced when we recentroid all the stars.
@@ -664,6 +666,9 @@ def fit_im_force(im, x, y, psf, weight=None, dq=None, psfderiv=True,
             # for WISE at the moment, this should _mostly_ introduce
             # a mean shift, and potentially also a small subpixel-offset
             # related shift.
+            if psfderiv:
+                x = _x
+                y = _y
         if psfderiv:
             if derivcentroids:
                 maxstep = 1
@@ -732,7 +737,7 @@ def refit_psf_from_stamps(psf, x, y, xcen, ycen, stamps, name=None,
 
 
 def fit_im(im, psf, weight=None, dq=None, psfderiv=True,
-           nskyx=0, nskyy=0, refit_psf=False,
+           nskyx=0, nskyy=0, refit_psf=False, refit_sky=True,
            verbose=False, miniter=4, maxiter=10, blist=None,
            maxstars=40000, derivcentroids=False,
            ntilex=1, ntiley=1, fewstars=100, threshold=5,
@@ -744,8 +749,14 @@ def fit_im(im, psf, weight=None, dq=None, psfderiv=True,
     model = numpy.zeros_like(im)
     xa = numpy.zeros(0, dtype='f4')
     ya = xa.copy()
-    lsky = numpy.median(im[weight > 0])
-    hsky = numpy.median(im[weight > 0])
+    if refit_sky:
+        lsky = numpy.median(im[weight > 0])
+        hsky = numpy.median(im[weight > 0])
+    else:
+        lsky = 0
+        hsky = 0
+        nskyx = 0  # I don't fully understand what the code does with nskyx, nskyy
+        nskyy = 0
     msky = numpy.zeros_like(im)
     passno = numpy.zeros(0, dtype='i4')
     guessflux, guesssky = None, None
@@ -758,8 +769,12 @@ def fit_im(im, psf, weight=None, dq=None, psfderiv=True,
 
     while True:
         titer += 1
-        hsky = sky_im(im-model, weight=weight, npix=20)
-        lsky = sky_im(im-model, weight=weight, npix=50*roughfwhm)
+        if refit_sky:
+            hsky = sky_im(im-model, weight=weight, npix=20)
+            lsky = sky_im(im-model, weight=weight, npix=50*roughfwhm)
+        else:
+            hsky = numpy.zeros_like( im )
+            lsky = numpy.zeros_like( im )
         if titer != lastiter:
             # in first passes, do not split sources!
             blendthresh = blendthreshu if titer < titer_thresh else 0.2
@@ -823,6 +838,9 @@ def fit_im(im, psf, weight=None, dq=None, psfderiv=True,
             sfit = numpy.s_[bdxf-bdxaf:dx+bdxl-bdxal,
                             bdyf-bdyaf:dy+bdyl-bdyal]
             weightbda = weight[sall] if weight is not None else None
+            # WHAT IS GUESSMBDA?  I'm trying to hack the code to not
+            #   subtractd a sky ,and the line two down where it
+            #   concatenates with guesssky makes me very nervous
             guessmbda = guess[mbda] if guess is not None else None
             guesssky = skypar.get((bdxf, bdyf))
             guessmbda = (numpy.concatenate([guessmbda, guesssky])
