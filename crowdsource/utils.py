@@ -29,8 +29,9 @@ class Candidate:
         """
         set the query to get all images and start the cursor.
         """
-        username = 'garima'
-        password = "c47p8010pt3i"
+        
+        # username = 
+        # password = 
 
         db = psycopg2.connect(dbname="decat", host="decatdb.lbl.gov", port=5432, user=username, password=password,
                               cursor_factory=psycopg2.extras.RealDictCursor)
