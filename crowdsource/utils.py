@@ -33,6 +33,9 @@ class Candidate:
         # username = 
         # password = 
 
+        username = 'garima'
+        password = "c47p8010pt3i"
+        
         db = psycopg2.connect(dbname="decat", host="decatdb.lbl.gov", port=5432, user=username, password=password,
                               cursor_factory=psycopg2.extras.RealDictCursor)
         self.q = (
@@ -189,7 +192,7 @@ class Quadrant:
     
     def get_rel_xy(self, radec):
         """
-        JUST FOR FLOAT RA DECS
+        JUST FOR FLOAT RA DEC CENTERS
         """
         
         size = int(self.qsize[0]/2) # Right now only handles square tiles...?

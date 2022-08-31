@@ -13,7 +13,7 @@ from astropy.io import fits
 from astropy.wcs import utils
 
 import matplotlib.pyplot as plt
-%matplotlib inline
+import astropy.wcs as wcs
 
 import psycopg2
 import psycopg2.extras
@@ -85,4 +85,71 @@ def get_pars_force(img, weight, x, y, mask = None, fwhm=4, miniter = 4, maxiter 
      
     return pars
 
+
+
+
+class utils:
+    
+    def get_weight(weighthdul, c):
+        return np.flipud(weighthdul[1].data[c[2]:c[3], c[0]:c[1]]) # Gets flipped because of numpy indexing
+
+    def get_full_pos(pars, s, c):
+        ymin, ymax, xmin, xmax = c
+        
+        ypres = np.reshape(pars[0]["y"], (pars[0]["x"].shape[0], 1))
+        xpres = np.reshape(pars[0]["x"], (pars[0]["x"].shape[0], 1))
+
+        xs = xpres[xpres>0][ypres[xpres>0]>0]
+        ys = ypres[xpres>0][ypres[xpres>0]>0]
+
+        xs = np.reshape(xs, (xs.shape[0], 1))
+        ys = np.reshape(ys, (xs.shape[0], 1))
+
+        ypre = xs - s
+        xpre = ys - s
+
+        y = -1*ypre
+        x = xpre
+
+        ypre = y + s - 1
+        xpre = x + s
+
+        xref = xpre + ymin
+        yref = ypre + xmin
+
+        return xref, yref
+
+    def get_radecs(imhdul, xref, yref):
+        ws = wcs.WCS(imhdul[1].header)  # create a wcs object with the quadrant object's header
+        return ws.wcs_pix2world(np.transpose(np.array([xref, yref+0.5]))[0], 0)  
+        # return the Ra/Dec positions as a numpy array (ofset by 0.5 pixels to account for differences in numpy   
+        # indexed image and full image xlim/ylim)
+
+
+    def get_rel_pos(x, y, s, c):
+        ymin, ymax, xmin, xmax = c
+        # Get Relative Positions
+        xref = x - ymin
+        yref = y - xmin
+
+        xref = xref - s
+        yref = yref - s
+
+        yref = -1*yref
+
+        xref = xref + s
+        yref = yref + s
+
+        yref = yref-1
+
+        return xref, yref
+
+    def get_xys(imhdul, radecs):   
+        ws = wcs.WCS(imhdul[1].header)  # create a wcs object with the quadrant object's header
+        xys = ws.wcs_world2pix(radecs, 0)  # return the Ra/Dec positions as a numpy array
+
+        x = np.transpose(xys)[0]
+        y = np.transpose(xys)[1]
+
+        return x, y
 
